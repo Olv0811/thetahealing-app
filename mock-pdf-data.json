@@ -1,0 +1,43 @@
+{
+  "type": "pdf_contents",
+  "version": "1.0",
+  "timestamp": "2026-04-14T18:05:16.771Z",
+  "data": [
+    {
+      "book_id": "1",
+      "title": "基础 DNA 实用手册",
+      "content": "希塔疗愈是在冥想过程中，透过对造物主专注的祈求，达到希塔脑波状态（4-7HZ）的一种疗愈方法。希塔脑波是深度放松的状态，类似于深度睡眠或深度冥想。",
+      "total_pages": 245,
+      "file_path": "/basic-dna-manual.pdf",
+      "extracted_at": "2026-04-14T18:05:16.766Z",
+      "updated_at": "2026-04-14T18:05:16.769Z"
+    },
+    {
+      "book_id": "2",
+      "title": "进阶 DNA 执业者指南",
+      "content": "信念挖掘是希塔疗愈的核心技术之一，通过挖掘潜意识的信念系统，找到影响个人成长的限制性信念。DNA激活是通过希塔疗愈技术激活个体的DNA潜能。",
+      "total_pages": 189,
+      "file_path": "/advanced-dna-practitioner.pdf",
+      "extracted_at": "2026-04-14T18:05:16.769Z",
+      "updated_at": "2026-04-14T18:05:16.769Z"
+    },
+    {
+      "book_id": "3",
+      "title": "深度探索指南",
+      "content": "感觉下载是希塔疗愈的重要技术，通过下载造物主的智慧和感觉，帮助个案显化丰盛和喜悦。脉轮净化是通过能量工作净化身体的七个脉轮系统。",
+      "total_pages": 312,
+      "file_path": "/dig-deeper-guide.pdf",
+      "extracted_at": "2026-04-14T18:05:16.769Z",
+      "updated_at": "2026-04-14T18:05:16.769Z"
+    },
+    {
+      "book_id": "4",
+      "title": "希塔疗愈知识库",
+      "content": "丰盛显化是通过希塔疗愈技术显化金钱、关系、健康的丰盛状态。灵魂伴侣是通过与高我连接找到合适的伴侣关系。自由意志与法则是希塔疗愈的重要法则。",
+      "total_pages": 423,
+      "file_path": "/theta-healing-knowledge-base.pdf",
+      "extracted_at": "2026-04-14T18:05:16.769Z",
+      "updated_at": "2026-04-14T18:05:16.769Z"
+    }
+  ]
+}

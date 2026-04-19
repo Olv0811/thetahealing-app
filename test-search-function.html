@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试搜索功能</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px 24px;
+            background: #6050af;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #50409f;
+        }
+        .results {
+            margin-top: 20px;
+        }
+        .result-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+        }
+        .result-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .result-snippet {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .result-score {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        .error {
+            color: #ff6b6b;
+            text-align: center;
+            padding: 20px;
+        }
+        .test-queries {
+            margin-top: 20px;
+        }
+        .test-queries h3 {
+            margin-bottom: 10px;
+        }
+        .test-query {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 5px;
+            display: inline-block;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .test-query:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>希塔疗愈知识库搜索测试</h1>
+        
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="输入关键词搜索..." />
+            <button onclick="performSearch()">搜索</button>
+        </div>
+
+        <div class="test-queries">
+            <h3>快速测试查询：</h3>
+            <div>
+                <span class="test-query" onclick="quickSearch('什么是希塔疗愈？')">什么是希塔疗愈？</span>
+                <span class="test-query" onclick="quickSearch('希塔脑波频率')">希塔脑波频率</span>
+                <span class="test-query" onclick="quickSearch('信念挖掘')">信念挖掘</span>
+                <span class="test-query" onclick="quickSearch('肌肉测试')">肌肉测试</span>
+                <span class="test-query" onclick="quickSearch('细胞对话')">细胞对话</span>
+                <span class="test-query" onclick="quickSearch('DNA激活')">DNA激活</span>
+                <span class="test-query" onclick="quickSearch('脉轮')">脉轮</span>
+                <span class="test-query" onclick="quickSearch('显化')">显化</span>
+            </div>
+        </div>
+
+        <div id="results" class="results"></div>
+    </div>
+
+    <script type="module">
+        // 导入搜索函数
+        import { simpleFuzzySearch } from './src/services/simple-search.service.ts';
+
+        // 暴露给全局
+        window.simpleFuzzySearch = simpleFuzzySearch;
+
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) {
+                alert('请输入搜索关键词');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="loading">正在搜索...</div>';
+
+            try {
+                console.log('开始搜索:', query);
+                const { matches, error } = await simpleFuzzySearch(query);
+
+                if (error) {
+                    resultsDiv.innerHTML = `<div class="error">搜索失败: ${error}</div>`;
+                    return;
+                }
+
+                if (matches.length === 0) {
+                    resultsDiv.innerHTML = '<div class="loading">没有找到匹配的内容</div>';
+                    return;
+                }
+
+                let html = '<h2>找到 ' + matches.length + ' 个匹配项：</h2>';
+                matches.forEach((item, index) => {
+                    html += `
+                        <div class="result-item">
+                            <div class="result-title">${index + 1}. ${item.title}</div>
+                            <div class="result-snippet">${item.snippet}</div>
+                            <div class="result-score">相关性: ${(item.relevanceScore * 10).toFixed(1)}% | 来源: ${item.bookTitle}</div>
+                        </div>
+                    `;
+                });
+
+                resultsDiv.innerHTML = html;
+            } catch (err) {
+                console.error('搜索错误:', err);
+                resultsDiv.innerHTML = `<div class="error">搜索时发生错误: ${err.message}</div>`;
+            }
+        }
+
+        function quickSearch(query) {
+            document.getElementById('searchInput').value = query;
+            performSearch();
+        }
+
+        // 暴露给全局
+        window.performSearch = performSearch;
+        window.quickSearch = quickSearch;
+
+        // 绑定回车键
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+    </script>
+</body>
+</html>

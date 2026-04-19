@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase 简单测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .success {
+            color: #4CAF50;
+            background: #e8f5e9;
+        }
+        .error {
+            color: #f44336;
+            background: #ffebee;
+        }
+        .info {
+            color: #2196F3;
+            background: #e3f2fd;
+        }
+        button {
+            background: #6050af;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #5040a0;
+        }
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 5px 0;
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Supabase 简单连接测试</h1>
+        <p>测试 Supabase 连接和基本操作</p>
+
+        <div class="test-section info">
+            <strong>配置:</strong>
+            <div>URL: https://cbwxsmtfgxwotwudpkfe.supabase.co</div>
+        </div>
+
+        <div id="loginSection">
+            <h3>1. 登录</h3>
+            <input type="email" id="email" placeholder="邮箱">
+            <input type="password" id="password" placeholder="密码">
+            <button onclick="login()">登录</button>
+            <button onclick="checkSession()">检查会话</button>
+        </div>
+
+        <div id="testSection" style="display:none;">
+            <button onclick="testConnection()">测试连接</button>
+            <button onclick="testSimpleQuery()">测试简单查询</button>
+            <button onclick="testJournalQuery()">测试日记查询</button>
+            <button onclick="clearResults()">清除结果</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://cbwxsmtfgxwotwudpkfe.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNid3hzbXRmZ3h3b3R3dWRwa2ZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTIxNjYsImV4cCI6MjA4NTg2ODE2Nn0.boOnhrSlXglTbKSiFp3xikrq1m2PbnNDT3IT8WN4V5A';
+        let supabase = null;
+        let currentUser = null;
+
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-section ${type}`;
+            resultDiv.innerHTML = `
+                <div class="time">${new Date().toLocaleTimeString()}</div>
+                <div>${message}</div>
+            `;
+            resultsDiv.appendChild(resultDiv);
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+
+        async function initSupabase() {
+            if (!supabase) {
+                console.log('初始化 Supabase 客户端...');
+                console.log('URL:', SUPABASE_URL);
+                console.log('Key:', SUPABASE_KEY.substring(0, 20) + '...');
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+                    db: {
+                        schema: 'public'
+                    }
+                });
+                console.log('Supabase 客户端创建完成');
+            }
+        }
+
+        async function checkSession() {
+            await initSupabase();
+            addResult('检查当前会话...', 'info');
+
+            const { data: { session }, error } = await supabase.auth.getSession();
+
+            if (error) {
+                addResult(`❌ 检查会话失败: ${error.message}`, 'error');
+                console.error('检查会话失败:', error);
+                return;
+            }
+
+            if (session) {
+                currentUser = session.user;
+                addResult(`✅ 用户已登录: ${session.user.email}`, 'success');
+                addResult(`   用户ID: ${session.user.id}`, 'success');
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('testSection').style.display = 'block';
+            } else {
+                addResult('⚠ 用户未登录', 'warning');
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                addResult('❌ 请输入邮箱和密码', 'error');
+                return;
+            }
+
+            await initSupabase();
+            addResult('尝试登录...', 'info');
+            console.log('尝试登录...');
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+
+                if (error) {
+                    addResult(`❌ 登录失败: ${error.message}`, 'error');
+                    console.error('登录失败:', error);
+                    return;
+                }
+
+                currentUser = data.user;
+                addResult(`✅ 登录成功: ${data.user.email}`, 'success');
+                addResult(`   用户ID: ${data.user.id}`, 'success');
+                console.log('登录成功:', data.user);
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('testSection').style.display = 'block';
+            } catch (error) {
+                addResult(`❌ 登录异常: ${error.message}`, 'error');
+                console.error('登录异常:', error);
+            }
+        }
+
+        async function testConnection() {
+            addResult('测试 Supabase 基本连接...', 'info');
+            console.log('测试基本连接...');
+
+            try {
+                const start = Date.now();
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    }
+                });
+                const duration = Date.now() - start;
+
+                if (response.ok) {
+                    addResult(`✅ Supabase 连接正常 (${duration}ms)`, 'success');
+                    console.log('连接正常:', duration);
+                } else {
+                    addResult(`❌ 连接失败 (${response.status}): ${response.statusText}`, 'error');
+                    console.error('连接失败:', response.status, response.statusText);
+                }
+            } catch (error) {
+                addResult(`❌ 连接异常: ${error.message}`, 'error');
+                console.error('连接异常:', error);
+            }
+        }
+
+        async function testSimpleQuery() {
+            if (!currentUser) {
+                addResult('❌ 请先登录', 'error');
+                return;
+            }
+
+            addResult('测试简单查询（profiles 表）...', 'info');
+            console.log('测试 profiles 表查询...');
+
+            try {
+                const start = Date.now();
+                console.log('开始查询 profiles 表...');
+
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', currentUser.id)
+                    .single();
+
+                const duration = Date.now() - start;
+                console.log('查询完成，耗时:', duration);
+                console.log('结果:', { data, error });
+
+                if (error) {
+                    addResult(`❌ 查询失败: ${error.message} (${duration}ms)`, 'error');
+                    console.error('查询失败:', error);
+                } else {
+                    addResult(`✅ 查询成功 (${duration}ms)`, 'success');
+                    addResult(`   Profile: ${JSON.stringify(data, null, 2)}`, 'success');
+                }
+            } catch (error) {
+                addResult(`❌ 查询异常: ${error.message}`, 'error');
+                console.error('查询异常:', error);
+            }
+        }
+
+        async function testJournalQuery() {
+            if (!currentUser) {
+                addResult('❌ 请先登录', 'error');
+                return;
+            }
+
+            addResult('测试日记查询（journal_entries 表）...', 'info');
+            console.log('测试 journal_entries 表查询...');
+            console.log('用户ID:', currentUser.id);
+
+            try {
+                const start = Date.now();
+                console.log('开始查询 journal_entries 表...');
+
+                const { data, error } = await supabase
+                    .from('journal_entries')
+                    .select('*')
+                    .eq('user_id', currentUser.id);
+
+                const duration = Date.now() - start;
+                console.log('查询完成，耗时:', duration);
+                console.log('结果:', { data, error });
+
+                if (error) {
+                    addResult(`❌ 查询失败: ${error.message} (${duration}ms)`, 'error');
+                    addResult(`   错误代码: ${error.code}`, 'error');
+                    addResult(`   错误详情: ${JSON.stringify(error, null, 2)}`, 'error');
+                    console.error('查询失败:', error);
+                } else {
+                    addResult(`✅ 查询成功 (${duration}ms)`, 'success');
+                    addResult(`   找到 ${data.length} 条日记记录`, 'success');
+                    console.log('查询成功:', data);
+                }
+            } catch (error) {
+                addResult(`❌ 查询异常: ${error.message}`, 'error');
+                console.error('查询异常:', error);
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // 页面加载时
+        window.onload = function() {
+            addResult('Supabase 简单测试工具已加载', 'info');
+            console.log('页面加载完成');
+            checkSession();
+        };
+    </script>
+</body>
+</html>

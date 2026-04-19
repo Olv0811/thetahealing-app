@@ -1,0 +1,26 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+# 临时脚本文件
+check-brackets.js
+analyze-function.js
+check-getLocalContent.js
+find-missing-bracket.js
+fix-check.js
+simple-check.js
+# 构建输出
+build-output.txt
+# 临时数据库脚本
+check-db-content.ts
+create-table.ts
+extract-pdf-content.ts
+extract-pdf-to-db.ts
+read-pdf-content.js
+run-migration.ts
+test-db-connection.ts
+test-db-schema.ts

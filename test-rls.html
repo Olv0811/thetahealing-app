@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RLS 诊断工具</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .success {
+            color: #4CAF50;
+            background: #e8f5e9;
+        }
+        .error {
+            color: #f44336;
+            background: #ffebee;
+        }
+        .info {
+            color: #2196F3;
+            background: #e3f2fd;
+        }
+        .warning {
+            color: #ff9800;
+            background: #fff3e0;
+        }
+        button {
+            background: #6050af;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #5040a0;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin: 10px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 3px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .sql-box {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .sql-box pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 5px 0;
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>RLS 诊断工具</h1>
+        <p>检查 Supabase RLS 策略配置和数据库权限</p>
+
+        <div class="test-section info">
+            <strong>当前配置:</strong>
+            <div>URL: https://cbwxsmtfgxwotwudpkfe.supabase.co</div>
+        </div>
+
+        <div id="loginSection">
+            <h3>1. 登录 Supabase</h3>
+            <input type="email" id="email" placeholder="邮箱" value="">
+            <input type="password" id="password" placeholder="密码">
+            <button onclick="login()">登录</button>
+            <button onclick="checkSession()">检查会话</button>
+        </div>
+
+        <div>
+            <button onclick="runDiagnostics()" id="diagnoseBtn" disabled>2. 运行诊断</button>
+            <button onclick="testJournalAccess()" id="testBtn" disabled>3. 测试日记访问</button>
+            <button onclick="showFixSQL()" id="fixBtn">4. 显示修复 SQL</button>
+            <button onclick="clearResults()" id="clearBtn">清除结果</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://cbwxsmtfgxwotwudpkfe.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNid3hzbXRmZ3h3b3R3dWRwa2ZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTIxNjYsImV4cCI6MjA4NTg2ODE2Nn0.boOnhrSlXglTbKSiFp3xikrq1m2PbnNDT3IT8WN4V5A';
+        let supabase = null;
+        let currentUser = null;
+
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-section ${type}`;
+            resultDiv.innerHTML = `
+                <div class="time">${new Date().toLocaleTimeString()}</div>
+                <div>${message}</div>
+            `;
+            resultsDiv.appendChild(resultDiv);
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+
+        function addSQL(sql, title = 'SQL 脚本') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'test-section info';
+            resultDiv.innerHTML = `
+                <strong>${title}</strong>
+                <div class="sql-box"><pre>${sql}</pre></div>
+                <p><strong>如何使用:</strong></p>
+                <ol>
+                    <li>访问 <a href="https://supabase.com/dashboard/project/cbwxsmtfgxwotwudpkfe/sql/new" target="_blank">Supabase SQL Editor</a></li>
+                    <li>复制上面的 SQL 代码</li>
+                    <li>粘贴到 SQL Editor 中</li>
+                    <li>点击 "Run" 执行</li>
+                </ol>
+            `;
+            resultsDiv.appendChild(resultDiv);
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+
+        async function initSupabase() {
+            if (!supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+        }
+
+        async function checkSession() {
+            await initSupabase();
+            addResult('检查当前会话...', 'info');
+
+            const { data: { session }, error } = await supabase.auth.getSession();
+
+            if (error) {
+                addResult(`❌ 检查会话失败: ${error.message}`, 'error');
+                return;
+            }
+
+            if (session) {
+                currentUser = session.user;
+                addResult(`✅ 用户已登录: ${session.user.email}`, 'success');
+                addResult(`   用户ID: ${session.user.id}`, 'success');
+                document.getElementById('diagnoseBtn').disabled = false;
+                document.getElementById('testBtn').disabled = false;
+                document.getElementById('loginSection').style.display = 'none';
+            } else {
+                addResult('⚠ 用户未登录', 'warning');
+                addResult('请输入邮箱和密码登录', 'info');
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                addResult('❌ 请输入邮箱和密码', 'error');
+                return;
+            }
+
+            await initSupabase();
+            addResult('尝试登录...', 'info');
+
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (error) {
+                addResult(`❌ 登录失败: ${error.message}`, 'error');
+                return;
+            }
+
+            currentUser = data.user;
+            addResult(`✅ 登录成功: ${data.user.email}`, 'success');
+            addResult(`   用户ID: ${data.user.id}`, 'success');
+            document.getElementById('diagnoseBtn').disabled = false;
+            document.getElementById('testBtn').disabled = false;
+            document.getElementById('loginSection').style.display = 'none';
+        }
+
+        async function runDiagnostics() {
+            if (!currentUser) {
+                addResult('❌ 请先登录', 'error');
+                return;
+            }
+
+            addResult('开始数据库诊断...', 'info');
+            addResult('', 'info');
+
+            // 1. 检查 profile
+            addResult('1. 检查用户 profile...', 'info');
+            try {
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', currentUser.id)
+                    .single();
+
+                if (profileError) {
+                    addResult(`❌ 查询 profile 失败: ${profileError.message}`, 'error');
+                    addResult(`   错误代码: ${profileError.code}`, 'error');
+                } else {
+                    addResult('✅ 用户 profile 存在', 'success');
+                    addResult(`   Profile: ${JSON.stringify(profile, null, 2)}`, 'success');
+                }
+            } catch (error) {
+                addResult(`❌ 查询出错: ${error.message}`, 'error');
+            }
+            addResult('', 'info');
+
+            // 2. 检查 journal_entries
+            addResult('2. 检查 journal_entries 表...', 'info');
+            try {
+                const { data: entries, error: entriesError } = await supabase
+                    .from('journal_entries')
+                    .select('id')
+                    .eq('user_id', currentUser.id)
+                    .limit(1);
+
+                if (entriesError) {
+                    addResult(`❌ 查询 journal_entries 失败: ${entriesError.message}`, 'error');
+                    addResult(`   错误代码: ${entriesError.code}`, 'error');
+
+                    if (entriesError.code === '42P01') {
+                        addResult('   💡 表不存在！需要运行数据库迁移', 'warning');
+                    } else if (entriesError.code === '42501') {
+                        addResult('   💡 权限被拒绝！RLS 策略配置有问题', 'warning');
+                    }
+                } else {
+                    addResult(`✅ journal_entries 表可访问`, 'success');
+                    addResult(`   找到 ${entries.length} 条记录`, 'success');
+                }
+            } catch (error) {
+                addResult(`❌ 查询出错: ${error.message}`, 'error');
+            }
+            addResult('', 'info');
+
+            addResult('诊断完成！', 'success');
+        }
+
+        async function testJournalAccess() {
+            if (!currentUser) {
+                addResult('❌ 请先登录', 'error');
+                return;
+            }
+
+            addResult('测试日记访问权限...', 'info');
+
+            try {
+                const { data, error } = await supabase
+                    .from('journal_entries')
+                    .select('*')
+                    .eq('user_id', currentUser.id);
+
+                if (error) {
+                    addResult(`❌ 访问日记失败: ${error.message}`, 'error');
+                    addResult(`   错误详情: ${JSON.stringify(error, null, 2)}`, 'error');
+                } else {
+                    addResult(`✅ 成功访问日记数据`, 'success');
+                    addResult(`   找到 ${data.length} 条日记记录`, 'success');
+                }
+            } catch (error) {
+                addResult(`❌ 测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        function showFixSQL() {
+            const fixSQL = `-- 完全重新配置 journal_entries 的 RLS 策略
+-- 这个脚本会修复所有权限问题
+
+-- 1. 删除所有现有策略
+DROP POLICY IF EXISTS "Users can view own entries" ON journal_entries;
+DROP POLICY IF EXISTS "Users can create own entries" ON journal_entries;
+DROP POLICY IF EXISTS "Users can update own entries" ON journal_entries;
+DROP POLICY IF EXISTS "Users can delete own entries" ON journal_entries;
+DROP POLICY IF EXISTS "Users can view own journal entries" ON journal_entries;
+DROP POLICY IF EXISTS "Users can insert own journal entries" ON journal_entries;
+DROP POLICY IF EXISTS "Users can update own journal entries" ON journal_entries;
+DROP POLICY IF EXISTS "Users can delete own journal entries" ON journal_entries;
+
+-- 2. 启用 RLS
+ALTER TABLE journal_entries ENABLE ROW LEVEL SECURITY;
+
+-- 3. 创建新的策略
+CREATE POLICY "Users can view own journal entries"
+  ON journal_entries
+  FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own journal entries"
+  ON journal_entries
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own journal entries"
+  ON journal_entries
+  FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own journal entries"
+  ON journal_entries
+  FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+-- 4. 验证策略
+SELECT * FROM pg_policies WHERE tablename = 'journal_entries';
+
+-- 5. 测试查询（替换 YOUR_USER_ID 为你的实际用户ID）
+-- SELECT * FROM journal_entries WHERE user_id = 'YOUR_USER_ID';`;
+
+            addSQL(fixSQL, 'RLS 策略修复 SQL');
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // 页面加载时检查会话
+        window.onload = function() {
+            addResult('RLS 诊断工具已加载', 'info');
+            checkSession();
+        };
+    </script>
+</body>
+</html>

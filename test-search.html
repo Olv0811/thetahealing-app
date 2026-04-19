@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>搜索测试</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #results { margin-top: 20px; }
+    .match { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h1>搜索测试 - "什么是存有的第五界？"</h1>
+  <button onclick="testSearch()">开始测试搜索</button>
+  <div id="results"></div>
+
+  <script type="module">
+    import { getLocalDatabase } from './src/services/local-db.service.js';
+    import { getLocalSearchService } from './src/services/local-search.service.js';
+
+    async function testSearch() {
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '<p>正在初始化数据库...</p>';
+
+      try {
+        // 初始化数据库
+        const db = getLocalDatabase();
+        await db.init();
+
+        // 检查数据
+        const stats = await db.getStats();
+        resultsDiv.innerHTML += `<p>数据库统计: PDF=${stats.pdfCount}, Q&A=${stats.qaCount}</p>`;
+
+        if (stats.qaCount === 0) {
+          resultsDiv.innerHTML += '<p class="error">数据库中没有Q&A数据！</p>';
+          return;
+        }
+
+        // 测试搜索
+        const searchService = getLocalSearchService();
+        await searchService.init();
+
+        const query = "什么是存有的第五界？";
+        resultsDiv.innerHTML += `<p>搜索: "${query}"</p>`;
+
+        const result = await searchService.simpleFuzzySearch(query);
+
+        if (result.error) {
+          resultsDiv.innerHTML += `<p class="error">错误: ${result.error}</p>`;
+        } else {
+          resultsDiv.innerHTML += `<p>找到 ${result.matches.length} 个匹配项</p>`;
+
+          if (result.matches.length === 0) {
+            resultsDiv.innerHTML += '<p class="error">没有找到匹配项！</p>';
+
+            // 尝试更简单的搜索
+            const simpleResult = await searchService.simpleFuzzySearch("第五界");
+            resultsDiv.innerHTML += `<p>尝试搜索"第五界": 找到 ${simpleResult.matches.length} 个匹配项</p>`;
+
+            // 显示所有Q&A数据
+            const allQA = await db.getAllQAKnowledge();
+            resultsDiv.innerHTML += `<p>数据库中所有Q&A数据:</p>`;
+            allQA.forEach(qa => {
+              resultsDiv.innerHTML += `<div class="match">
+                <strong>Q${qa.question_number}:</strong> ${qa.question}<br>
+                <strong>Answer:</strong> ${qa.answer}
+              </div>`;
+            });
+          } else {
+            result.matches.forEach(match => {
+              resultsDiv.innerHTML += `<div class="match">
+                <strong>${match.title}</strong><br>
+                ${match.snippet}<br>
+                相关性: ${Math.round(match.relevanceScore * 100)}%
+              </div>`;
+            });
+          }
+        }
+      } catch (error) {
+        resultsDiv.innerHTML += `<p class="error">错误: ${error.message}</p>`;
+        console.error(error);
+      }
+    }
+
+    window.testSearch = testSearch;
+  </script>
+</body>
+</html>

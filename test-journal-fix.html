@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日记功能测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .success {
+            color: #4CAF50;
+            background: #e8f5e9;
+        }
+        .error {
+            color: #f44336;
+            background: #ffebee;
+        }
+        .info {
+            color: #2196F3;
+            background: #e3f2fd;
+        }
+        button {
+            background: #6050af;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #5040a0;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 5px 0;
+            width: 300px;
+        }
+        textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 5px 0;
+            width: 100%;
+            min-height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>日记功能测试</h1>
+        <p>测试日记的读取、创建、编辑和删除功能</p>
+
+        <div class="test-section info">
+            <strong>测试流程:</strong>
+            <ol>
+                <li>登录 Supabase</li>
+                <li>测试读取日记</li>
+                <li>测试创建日记</li>
+                <li>测试编辑日记</li>
+                <li>测试删除日记</li>
+            </ol>
+        </div>
+
+        <div id="loginSection">
+            <h3>1. 登录</h3>
+            <input type="email" id="email" placeholder="邮箱">
+            <input type="password" id="password" placeholder="密码">
+            <button onclick="login()">登录</button>
+            <button onclick="checkSession()">检查会话</button>
+        </div>
+
+        <div id="testSection" style="display:none;">
+            <button onclick="testReadJournal()">测试读取日记</button>
+            <button onclick="testCreateJournal()">测试创建日记</button>
+            <button onclick="testUpdateJournal()">测试编辑日记</button>
+            <button onclick="testDeleteJournal()">测试删除日记</button>
+            <button onclick="clearResults()">清除结果</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://cbwxsmtfgxwotwudpkfe.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNid3hzbXRmZ3h3b3R3dWRwa2ZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTIxNjYsImV4cCI6MjA4NTg2ODE2Nn0.boOnhrSlXglTbKSiFp3xikrq1m2PbnNDT3IT8WN4V5A';
+        let supabase = null;
+        let currentUser = null;
+        let testEntryId = null;
+
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-section ${type}`;
+            resultDiv.innerHTML = `
+                <div class="time">${new Date().toLocaleTimeString()}</div>
+                <div>${message}</div>
+            `;
+            resultsDiv.appendChild(resultDiv);
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+
+        async function initSupabase() {
+            if (!supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+        }
+
+        async function checkSession() {
+            await initSupabase();
+            addResult('检查当前会话...', 'info');
+
+            const { data: { session }, error } = await supabase.auth.getSession();
+
+            if (error) {
+                addResult(`❌ 检查会话失败: ${error.message}`, 'error');
+                return;
+            }
+
+            if (session) {
+                currentUser = session.user;
+                addResult(`✅ 用户已登录: ${session.user.email}`, 'success');
+                addResult(`   用户ID: ${session.user.id}`, 'success');
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('testSection').style.display = 'block';
+            } else {
+                addResult('⚠ 用户未登录', 'warning');
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                addResult('❌ 请输入邮箱和密码', 'error');
+                return;
+            }
+
+            await initSupabase();
+            addResult('尝试登录...', 'info');
+
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (error) {
+                addResult(`❌ 登录失败: ${error.message}`, 'error');
+                return;
+            }
+
+            currentUser = data.user;
+            addResult(`✅ 登录成功: ${data.user.email}`, 'success');
+            addResult(`   用户ID: ${data.user.id}`, 'success');
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('testSection').style.display = 'block';
+        }
+
+        async function testReadJournal() {
+            if (!currentUser) {
+                addResult('❌ 请先登录', 'error');
+                return;
+            }
+
+            addResult('开始测试读取日记...', 'info');
+
+            try {
+                const { data, error } = await supabase
+                    .from('journal_entries')
+                    .select('*')
+                    .eq('user_id', currentUser.id);
+
+                if (error) {
+                    addResult(`❌ 读取日记失败: ${error.message}`, 'error');
+                    addResult(`   错误代码: ${error.code}`, 'error');
+                    addResult(`   错误详情: ${JSON.stringify(error, null, 2)}`, 'error');
+                    return;
+                }
+
+                addResult(`✅ 成功读取日记数据`, 'success');
+                addResult(`   找到 ${data.length} 条日记记录`, 'success');
+
+                if (data.length > 0) {
+                    testEntryId = data[0].id;
+                    addResult(`   最近的日记ID: ${testEntryId}`, 'success');
+                } else {
+                    addResult('   当前没有日记记录', 'info');
+                }
+            } catch (error) {
+                addResult(`❌ 测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCreateJournal() {
+            if (!currentUser) {
+                addResult('❌ 请先登录', 'error');
+                return;
+            }
+
+            addResult('开始测试创建日记...', 'info');
+
+            const testEntry = {
+                user_id: currentUser.id,
+                title: '测试日记',
+                content: '这是一条测试日记，用于验证修复是否成功。',
+                rating: 5,
+                tags: ['测试', '修复'],
+                mood_before: '焦虑',
+                mood_after: '平静'
+            };
+
+            try {
+                const { data, error } = await supabase
+                    .from('journal_entries')
+                    .insert(testEntry)
+                    .select()
+                    .single();
+
+                if (error) {
+                    addResult(`❌ 创建日记失败: ${error.message}`, 'error');
+                    addResult(`   错误代码: ${error.code}`, 'error');
+                    addResult(`   错误详情: ${JSON.stringify(error, null, 2)}`, 'error');
+                    return;
+                }
+
+                testEntryId = data.id;
+                addResult(`✅ 成功创建日记`, 'success');
+                addResult(`   日记ID: ${testEntryId}`, 'success');
+                addResult(`   创建时间: ${data.created_at}`, 'success');
+            } catch (error) {
+                addResult(`❌ 测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function testUpdateJournal() {
+            if (!currentUser) {
+                addResult('❌ 请先登录', 'error');
+                return;
+            }
+
+            if (!testEntryId) {
+                addResult('❌ 没有可编辑的日记，请先创建日记', 'error');
+                return;
+            }
+
+            addResult('开始测试编辑日记...', 'info');
+
+            try {
+                const { data, error } = await supabase
+                    .from('journal_entries')
+                    .update({
+                        content: '这是编辑后的日记内容。',
+                        title: '编辑后的测试日记'
+                    })
+                    .eq('id', testEntryId)
+                    .select()
+                    .single();
+
+                if (error) {
+                    addResult(`❌ 编辑日记失败: ${error.message}`, 'error');
+                    addResult(`   错误代码: ${error.code}`, 'error');
+                    addResult(`   错误详情: ${JSON.stringify(error, null, 2)}`, 'error');
+                    return;
+                }
+
+                addResult(`✅ 成功编辑日记`, 'success');
+                addResult(`   更新时间: ${data.updated_at}`, 'success');
+            } catch (error) {
+                addResult(`❌ 测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDeleteJournal() {
+            if (!currentUser) {
+                addResult('❌ 请先登录', 'error');
+                return;
+            }
+
+            if (!testEntryId) {
+                addResult('❌ 没有可删除的日记，请先创建日记', 'error');
+                return;
+            }
+
+            addResult('开始测试删除日记...', 'info');
+
+            try {
+                const { error } = await supabase
+                    .from('journal_entries')
+                    .delete()
+                    .eq('id', testEntryId);
+
+                if (error) {
+                    addResult(`❌ 删除日记失败: ${error.message}`, 'error');
+                    addResult(`   错误代码: ${error.code}`, 'error');
+                    addResult(`   错误详情: ${JSON.stringify(error, null, 2)}`, 'error');
+                    return;
+                }
+
+                addResult(`✅ 成功删除日记`, 'success');
+                testEntryId = null;
+            } catch (error) {
+                addResult(`❌ 测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // 页面加载时检查会话
+        window.onload = function() {
+            addResult('日记功能测试工具已加载', 'info');
+            checkSession();
+        };
+    </script>
+</body>
+</html>

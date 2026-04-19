@@ -1,0 +1,31 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>希塔疗愈知识库测试</title>
+    <script type="module">
+        // Simple test to verify IndexedDB works in browser
+        async function testIndexedDB() {
+            try {
+                const request = indexedDB.open('TestDB', 1);
+                request.onerror = () => console.error('IndexedDB 不可用');
+                request.onsuccess = () => {
+                    console.log('IndexedDB 可用');
+                    const db = request.result;
+                    db.close();
+                };
+            } catch (error) {
+                console.error('IndexedDB 测试失败:', error);
+            }
+        }
+        testIndexedDB();
+    </script>
+</head>
+<body>
+    <h1>希塔疗愈知识库测试页面</h1>
+    <p>请查看控制台输出以验证 IndexedDB 功能。</p>
+    <p>在浏览器中打开开发者工具（F12）查看日志。</p>
+</body>
+</html>

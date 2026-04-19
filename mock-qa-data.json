@@ -1,0 +1,46 @@
+{
+  "type": "qa_knowledge_base",
+  "version": "1.0",
+  "timestamp": "2026-04-14T18:05:16.772Z",
+  "data": [
+    {
+      "question_number": 1,
+      "question": "什么是希塔疗愈？",
+      "answer": "希塔疗愈是在冥想过程中，透过对造物主专注的祈求，达到希塔脑波状态（4-7HZ）的一种疗愈方法。",
+      "source_file": "thetahealingdatabase_complete.md",
+      "category": "基础知识",
+      "tags": [
+        "希塔疗愈",
+        "希塔脑波"
+      ],
+      "created_at": "2026-04-14T18:05:16.769Z",
+      "updated_at": "2026-04-14T18:05:16.769Z"
+    },
+    {
+      "question_number": 2,
+      "question": "希塔脑波的频率范围是多少？",
+      "answer": "希塔脑波的频率范围是4-7HZ。",
+      "source_file": "thetahealingdatabase_complete.md",
+      "category": "基础知识",
+      "tags": [
+        "希塔脑波",
+        "频率"
+      ],
+      "created_at": "2026-04-14T18:05:16.769Z",
+      "updated_at": "2026-04-14T18:05:16.769Z"
+    },
+    {
+      "question_number": 3,
+      "question": "什么是信念挖掘？",
+      "answer": "信念挖掘是希塔疗愈的核心技术之一，通过挖掘潜意识的信念系统，找到影响个人成长的限制性信念。",
+      "source_file": "thetahealingdatabase_complete.md",
+      "category": "信念挖掘",
+      "tags": [
+        "信念挖掘",
+        "潜意识"
+      ],
+      "created_at": "2026-04-14T18:05:16.769Z",
+      "updated_at": "2026-04-14T18:05:16.769Z"
+    }
+  ]
+}

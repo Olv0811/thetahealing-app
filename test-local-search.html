@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本地搜索功能测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>希塔疗愈知识库 - 本地搜索测试</h1>
+
+        <div class="test-section">
+            <h3>1. 测试数据库初始化</h3>
+            <button id="initDbBtn">初始化数据库</button>
+            <div id="initResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. 搜索测试</h3>
+            <input type="text" id="searchInput" placeholder="输入搜索关键词...">
+            <button id="searchBtn">搜索</button>
+            <button id="clearCacheBtn">清除缓存</button>
+            <div id="searchResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. 数据库统计</h3>
+            <button id="getStatsBtn">获取统计信息</button>
+            <div id="statsResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. 功能说明</h3>
+            <ul>
+                <li>数据库使用浏览器 IndexedDB 存储</li>
+                <li>支持模糊搜索和关键词匹配</li>
+                <li>搜索结果按相关性排序</li>
+                <li>自动缓存搜索结果（5分钟）</li>
+            </ul>
+        </div>
+    </div>
+
+    <script type="module">
+        import { getLocalSearchService } from './src/services/local-search.service.js';
+
+        let searchService = null;
+        let isInitialized = false;
+
+        // DOM 元素
+        const initDbBtn = document.getElementById('initDbBtn');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const clearCacheBtn = document.getElementById('clearCacheBtn');
+        const getStatsBtn = document.getElementById('getStatsBtn');
+        const initResult = document.getElementById('initResult');
+        const searchResult = document.getElementById('searchResult');
+        const statsResult = document.getElementById('statsResult');
+
+        // 初始化数据库
+        initDbBtn.addEventListener('click', async () => {
+            initResult.innerHTML = '<div class="loading"></div> 正在初始化...';
+
+            try {
+                searchService = getLocalSearchService();
+                await searchService.init();
+                isInitialized = true;
+
+                initResult.className = 'result success';
+                initResult.innerHTML = '✅ 数据库初始化成功！';
+
+                // 添加一些示例数据用于测试
+                await addSampleData();
+            } catch (error) {
+                initResult.className = 'result error';
+                initResult.innerHTML = `❌ 初始化失败: ${error.message}`;
+            }
+        });
+
+        // 添加示例数据
+        async function addSampleData() {
+            try {
+                const stats = await searchService.getStats();
+                if (stats.pdfCount === 0 && stats.qaCount === 0) {
+                    // 这里添加简单的示例数据
+                    console.log('数据库为空，可以添加示例数据');
+                }
+            } catch (error) {
+                console.error('添加示例数据失败:', error);
+            }
+        }
+
+        // 搜索功能
+        searchBtn.addEventListener('click', async () => {
+            if (!isInitialized || !searchService) {
+                searchResult.className = 'result error';
+                searchResult.innerHTML = '❌ 请先初始化数据库';
+                return;
+            }
+
+            const query = searchInput.value.trim();
+            if (!query) {
+                searchResult.className = 'result error';
+                searchResult.innerHTML = '❌ 请输入搜索关键词';
+                return;
+            }
+
+            searchResult.innerHTML = '<div class="loading"></div> 正在搜索...';
+
+            try {
+                const { matches, error } = await searchService.simpleFuzzySearch(query);
+
+                if (error) {
+                    searchResult.className = 'result error';
+                    searchResult.innerHTML = `❌ 搜索失败: ${error}`;
+                } else {
+                    searchResult.className = 'result success';
+                    if (matches.length === 0) {
+                        searchResult.innerHTML = `✅ 搜索完成，未找到匹配项`;
+                    } else {
+                        let html = `✅ 找到 ${matches.length} 个匹配项:<br><br>`;
+                        matches.slice(0, 5).forEach((match, idx) => {
+                            html += `<strong>${idx + 1}. ${match.title}</strong><br>`;
+                            html += `书籍: ${match.bookTitle}<br>`;
+                            html += `相关性: ${Math.round(match.relevanceScore * 10)}%<br>`;
+                            html += `内容: ${match.snippet}<br><br>`;
+                        });
+                        searchResult.innerHTML = html;
+                    }
+                }
+            } catch (error) {
+                searchResult.className = 'result error';
+                searchResult.innerHTML = `❌ 搜索出错: ${error.message}`;
+            }
+        });
+
+        // 清除缓存
+        clearCacheBtn.addEventListener('click', async () => {
+            if (!isInitialized || !searchService) {
+                return;
+            }
+
+            try {
+                await searchService.clearSearchCache();
+                searchResult.className = 'result success';
+                searchResult.innerHTML = '✅ 搜索缓存已清除';
+            } catch (error) {
+                searchResult.className = 'result error';
+                searchResult.innerHTML = `❌ 清除缓存失败: ${error.message}`;
+            }
+        });
+
+        // 获取统计信息
+        getStatsBtn.addEventListener('click', async () => {
+            if (!isInitialized || !searchService) {
+                statsResult.className = 'result error';
+                statsResult.innerHTML = '❌ 请先初始化数据库';
+                return;
+            }
+
+            statsResult.innerHTML = '<div class="loading"></div> 正在获取统计信息...';
+
+            try {
+                const stats = await searchService.getStats();
+                statsResult.className = 'result success';
+                statsResult.innerHTML = `✅ 数据库统计:<br>
+                    PDF 内容: ${stats.pdfCount} 条<br>
+                    Q&A 知识: ${stats.qaCount} 条<br>
+                    搜索缓存: ${stats.cacheCount} 条`;
+            } catch (error) {
+                statsResult.className = 'result error';
+                statsResult.innerHTML = `❌ 获取统计失败: ${error.message}`;
+            }
+        });
+
+        // 自动初始化（可选）
+        window.addEventListener('load', () => {
+            // 不自动初始化，让用户手动点击
+            console.log('页面加载完成，请点击"初始化数据库"按钮开始测试');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase 认证调试工具</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .log-entry {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            color: #4CAF50;
+            background: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            color: #f44336;
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+        }
+        .info {
+            color: #2196F3;
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+        }
+        .warning {
+            color: #ff9800;
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+        }
+        button {
+            background: #6050af;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #5040a0;
+        }
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 5px;
+            width: 250px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Supabase 认证调试工具</h1>
+        <p>用于诊断 401 错误和认证问题</p>
+
+        <div class="section">
+            <h3>1. 初始化 Supabase 客户端</h3>
+            <button onclick="initSupabase()">初始化客户端</button>
+        </div>
+
+        <div class="section">
+            <h3>2. 认证状态检查</h3>
+            <button onclick="checkSession()">检查当前会话</button>
+            <button onclick="checkUser()">检查当前用户</button>
+            <button onclick="getAccessToken()">获取访问令牌</button>
+        </div>
+
+        <div class="section">
+            <h3>3. 登录/注册</h3>
+            <input type="email" id="email" placeholder="邮箱">
+            <input type="password" id="password" placeholder="密码">
+            <button onclick="login()">登录</button>
+            <button onclick="register()">注册</button>
+        </div>
+
+        <div class="section">
+            <h3>4. 数据库权限测试</h3>
+            <button onclick="testProfileAccess()">测试 profiles 表访问</button>
+            <button onclick="testJournalAccess()">测试 journal_entries 表访问</button>
+            <button onclick="testDirectQuery()">直接查询测试</button>
+        </div>
+
+        <div class="section">
+            <h3>5. RLS 策略检查</h3>
+            <button onclick="checkRLSPolicies()">检查 RLS 策略</button>
+        </div>
+
+        <div class="section">
+            <h3>📋 调试日志</h3>
+            <button onclick="clearLogs()">清除日志</button>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://cbwxsmtfgxwotwudpkfe.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_oq2oQLe7gw17JPeR4vEgsg_kcrXU0V5';
+        let supabase = null;
+        let currentUser = null;
+
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logsDiv.appendChild(logEntry);
+            logEntry.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            console.log(`[${type.toUpperCase()}]`, message);
+        }
+
+        function initSupabase() {
+            try {
+                log('初始化 Supabase 客户端...', 'info');
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                log('✅ Supabase 客户端初始化成功', 'success');
+                log(`URL: ${SUPABASE_URL}`, 'info');
+                log(`Key: ${SUPABASE_KEY.substring(0, 20)}...`, 'info');
+            } catch (error) {
+                log(`❌ 初始化失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkSession() {
+            if (!supabase) {
+                log('❌ 请先初始化 Supabase 客户端', 'error');
+                return;
+            }
+
+            log('检查当前会话...', 'info');
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+
+                if (error) {
+                    log(`❌ 检查会话失败: ${error.message}`, 'error');
+                    return;
+                }
+
+                if (session) {
+                    log('✅ 会话存在', 'success');
+                    log(`用户: ${session.user.email}`, 'info');
+                    log(`用户ID: ${session.user.id}`, 'info');
+                    log(`访问令牌: ${session.access_token.substring(0, 50)}...`, 'info');
+                    log(`过期时间: ${new Date(session.expires_at * 1000).toLocaleString()}`, 'info');
+                    currentUser = session.user;
+                } else {
+                    log('⚠️ 没有活动会话', 'warning');
+                }
+            } catch (error) {
+                log(`❌ 异常: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkUser() {
+            if (!supabase) {
+                log('❌ 请先初始化 Supabase 客户端', 'error');
+                return;
+            }
+
+            log('检查当前用户...', 'info');
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+
+                if (error) {
+                    log(`❌ 获取用户失败: ${error.message}`, 'error');
+                    return;
+                }
+
+                if (user) {
+                    log('✅ 用户已认证', 'success');
+                    log(`用户ID: ${user.id}`, 'info');
+                    log(`邮箱: ${user.email}`, 'info');
+                    currentUser = user;
+                } else {
+                    log('⚠️ 未找到用户', 'warning');
+                }
+            } catch (error) {
+                log(`❌ 异常: ${error.message}`, 'error');
+            }
+        }
+
+        async function getAccessToken() {
+            if (!supabase) {
+                log('❌ 请先初始化 Supabase 客户端', 'error');
+                return;
+            }
+
+            log('获取访问令牌...', 'info');
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+
+                if (error) {
+                    log(`❌ 获取令牌失败: ${error.message}`, 'error');
+                    return;
+                }
+
+                if (session) {
+                    log('✅ 访问令牌获取成功', 'success');
+                    log(`完整令牌: ${session.access_token}`, 'info');
+                } else {
+                    log('⚠️ 没有活动会话', 'warning');
+                }
+            } catch (error) {
+                log(`❌ 异常: ${error.message}`, 'error');
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                log('❌ 请输入邮箱和密码', 'error');
+                return;
+            }
+
+            if (!supabase) {
+                log('❌ 请先初始化 Supabase 客户端', 'error');
+                return;
+            }
+
+            log('尝试登录...', 'info');
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+
+                if (error) {
+                    log(`❌ 登录失败: ${error.message}`, 'error');
+                    log(`错误代码: ${error.status}`, 'error');
+                    return;
+                }
+
+                log('✅ 登录成功', 'success');
+                log(`用户: ${data.user.email}`, 'info');
+                log(`用户ID: ${data.user.id}`, 'info');
+                currentUser = data.user;
+
+                // 自动检查会话
+                setTimeout(checkSession, 500);
+            } catch (error) {
+                log(`❌ 异常: ${error.message}`, 'error');
+            }
+        }
+
+        async function register() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                log('❌ 请输入邮箱和密码', 'error');
+                return;
+            }
+
+            if (!supabase) {
+                log('❌ 请先初始化 Supabase 客户端', 'error');
+                return;
+            }
+
+            log('尝试注册...', 'info');
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                });
+
+                if (error) {
+                    log(`❌ 注册失败: ${error.message}`, 'error');
+                    return;
+                }
+
+                log('✅ 注册成功', 'success');
+                if (data.user) {
+                    log(`用户ID: ${data.user.id}`, 'info');
+                    currentUser = data.user;
+                }
+            } catch (error) {
+                log(`❌ 异常: ${error.message}`, 'error');
+            }
+        }
+
+        async function testProfileAccess() {
+            if (!currentUser) {
+                log('❌ 请先登录', 'error');
+                return;
+            }
+
+            log('测试 profiles 表访问...', 'info');
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', currentUser.id);
+
+                if (error) {
+                    log(`❌ 访问 profiles 失败: ${error.message}`, 'error');
+                    log(`错误代码: ${error.code}`, 'error');
+                    log(`错误详情: ${JSON.stringify(error, null, 2)}`, 'error');
+                    return;
+                }
+
+                log('✅ 成功访问 profiles 表', 'success');
+                log(`找到 ${data.length} 条记录`, 'info');
+            } catch (error) {
+                log(`❌ 异常: ${error.message}`, 'error');
+            }
+        }
+
+        async function testJournalAccess() {
+            if (!currentUser) {
+                log('❌ 请先登录', 'error');
+                return;
+            }
+
+            log('测试 journal_entries 表访问...', 'info');
+            try {
+                const { data, error } = await supabase
+                    .from('journal_entries')
+                    .select('*')
+                    .eq('user_id', currentUser.id);
+
+                if (error) {
+                    log(`❌ 访问 journal_entries 失败: ${error.message}`, 'error');
+                    log(`错误代码: ${error.code}`, 'error');
+                    log(`错误详情: ${JSON.stringify(error, null, 2)}`, 'error');
+                    return;
+                }
+
+                log('✅ 成功访问 journal_entries 表', 'success');
+                log(`找到 ${data.length} 条记录`, 'info');
+            } catch (error) {
+                log(`❌ 异常: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDirectQuery() {
+            if (!currentUser) {
+                log('❌ 请先登录', 'error');
+                return;
+            }
+
+            log('直接查询测试...', 'info');
+
+            // 测试不使用认证的查询
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                log(`当前令牌: ${session?.access_token.substring(0, 50)}...`, 'info');
+
+                // 尝试直接 API 调用
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/journal_entries?user_id=eq.${currentUser.id}`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${session?.access_token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ 直接查询失败: HTTP ${response.status}`, 'error');
+                    log(`错误响应: ${errorText}`, 'error');
+                    return;
+                }
+
+                const data = await response.json();
+                log('✅ 直接查询成功', 'success');
+                log(`找到 ${data.length} 条记录`, 'info');
+            } catch (error) {
+                log(`❌ 异常: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkRLSPolicies() {
+            log('检查 RLS 策略...', 'info');
+            log('注意：此功能需要在 Supabase SQL Editor 中手动执行', 'warning');
+            log('请执行以下 SQL 来检查 RLS 策略：', 'info');
+            log("SELECT * FROM pg_policies WHERE tablename = 'journal_entries';", 'info');
+            log("SELECT * FROM pg_policies WHERE tablename = 'profiles';", 'info');
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        // 页面加载时自动初始化
+        window.onload = function() {
+            log('🔍 Supabase 认证调试工具已加载', 'info');
+            log('请按照步骤操作进行诊断', 'info');
+        };
+    </script>
+</body>
+</html>
