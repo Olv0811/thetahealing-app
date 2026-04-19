@@ -1,7 +1,7 @@
 # Netlify 配置文件
 [build]
   command = "npm ci && npm run build"
-  publish = "celestial-sanctuary/dist"
+  publish = "public"
 
 [dev]
   command = "npm run dev"
