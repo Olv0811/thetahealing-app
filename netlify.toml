@@ -10,14 +10,14 @@
   VITE_TAILWIND_MODE = "build"
 
 [context.production.environment]
-  VITE_SUPABASE_URL = "your_production_supabase_url"
-  VITE_SUPABASE_ANON_KEY = "your_production_anon_key"
-  VITE_GLM_API_KEY = "your_production_glm_key"
+  VITE_SUPABASE_URL = "https://cbwxsmtfgxwotwudpkfe.supabase.co"
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNid3hzbXRmZ3h3b3R3dWRwa2ZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTIxNjYsImV4cCI6MjA4NTg2ODE2Nn0.boOnhrSlXglTbKSiFp3xikrq1m2PbnNDT3IT8WN4V5A"
+  VITE_GLM_API_KEY = "cc2727dfc8a04b5999ae5e4801999ff8.jIh7icyv9aYA1ynu"
 
 [context.deploy-preview.environment]
-  VITE_SUPABASE_URL = "your_preview_supabase_url"
-  VITE_SUPABASE_ANON_KEY = "your_preview_anon_key"
-  VITE_GLM_API_KEY = "your_preview_glm_key"
+  VITE_SUPABASE_URL = "https://cbwxsmtfgxwotwudpkfe.supabase.co"  
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNid3hzbXRmZ3h3b3R3dWRwa2ZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTIxNjYsImV4cCI6MjA4NTg2ODE2Nn0.boOnhrSlXglTbKSiFp3xikrq1m2PbnNDT3IT8WN4V5A"  
+  VITE_GLM_API_KEY = "cc2727dfc8a04b5999ae5e4801999ff8.jIh7icyv9aYA1ynu"
 
 # SPA路由重定向
 [[redirects]]
