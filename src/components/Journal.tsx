@@ -126,6 +126,7 @@ export default function Journal({ onLoginRedirect }: JournalProps) {
           {
             id: 'sample-1',
             user_id: user.id,
+            session_id: null,
             title: '示例日记',
             content: '这是一个示例日记记录。数据库连接暂时禁用，此为演示数据。',
             rating: 4,
@@ -649,7 +650,7 @@ export default function Journal({ onLoginRedirect }: JournalProps) {
                     <span className="text-xs font-medium text-on-surface">标签</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {allTags.map(tag => (
+                    {allTags.map((tag: string) => (
                       <button
                         key={tag}
                         onClick={() => handleToggleTag(tag)}

@@ -158,23 +158,25 @@ export default function JournalEditor({
 
             currentEntries = currentEntries.map(entry => 
 
-              entry.id === entryId 
+              entry.id === entryId
 
                 ? {
 
                     ...entry,
 
-                    title: data.title,
+                    title: data.title || '',
 
-                    content: data.content,
+                    content: data.content || '',
 
-                    rating: data.rating,
+                    rating: data.rating || 0,
 
-                    tags: data.tags,
+                    tags: data.tags || [],
 
-                    mood_before: data.mood_before,
+                    mood_before: data.mood_before || '',
 
-                    mood_after: data.mood_after,
+                    mood_after: data.mood_after || '',
+
+                    session_id: entry.session_id || null,
 
                     updated_at: new Date().toISOString()
 
@@ -207,6 +209,8 @@ export default function JournalEditor({
               mood_before: data.mood_before,
 
               mood_after: data.mood_after,
+
+              session_id: null,
 
               created_at: new Date().toISOString(),
 

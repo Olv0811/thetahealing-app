@@ -275,7 +275,7 @@ export async function getAllCategories(): Promise<{ data: string[] | null; error
     }
 
     // 提取唯一分类
-    const categories = [...new Set(data.map(item => item.category).filter(Boolean))];
+    const categories = [...new Set(data.map(item => item.category).filter(Boolean))] as string[];
     return { data: categories };
   } catch (error) {
     return { data: null, error: error instanceof Error ? error.message : '未知错误' };

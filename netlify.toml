@@ -1,25 +1,25 @@
 # Netlify 配置文件
 [build]
-  command = "npm run build"
+  command = "npm ci && npm run build"
   publish = "dist"
-  base = "Thetahealing/celestial-sanctuary"
+  base = "."
 
-[dev]
-  command = "npm run dev"
-  port = 3000
-  targetPort = 3000
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_VERSION = "10"
+  VITE_TAILWIND_MODE = "build"
 
-# 环境变量
-[context.production]
-  environment = { NODE_VERSION = "18" }
+[context.production.environment]
+  VITE_SUPABASE_URL = "your_production_supabase_url"
+  VITE_SUPABASE_ANON_KEY = "your_production_anon_key"
+  VITE_GLM_API_KEY = "your_production_glm_key"
 
-[context.deploy-preview]
-  environment = { NODE_VERSION = "18" }
+[context.deploy-preview.environment]
+  VITE_SUPABASE_URL = "your_preview_supabase_url"
+  VITE_SUPABASE_ANON_KEY = "your_preview_anon_key"
+  VITE_GLM_API_KEY = "your_preview_glm_key"
 
-[context.branch-deploy]
-  environment = { NODE_VERSION = "18" }
-
-# 重定向规则（解决SPA路由问题）
+# SPA路由重定向
 [[redirects]]
   from = "/*"
   to = "/index.html"

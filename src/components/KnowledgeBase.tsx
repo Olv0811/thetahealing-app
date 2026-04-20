@@ -4,9 +4,9 @@ import { BOOKS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { getBookmarks, getBookmarkStats } from '../services/bookmark.service';
 import { getNotes, getNoteStats } from '../services/note.service';
-import { simpleFuzzySearch } from '../services/simple-search.service';
+import { simpleFuzzySearch, MatchedItem } from '../services/simple-search.service';
 import PDFReader from './PDFReader';
-import type { Book } from '../types';
+import type { Book, BookmarkType, NoteType } from '../types';
 
 // 缓存键
 const CACHE_KEYS = {
